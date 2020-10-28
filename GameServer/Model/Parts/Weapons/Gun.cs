@@ -117,7 +117,7 @@ namespace GameServer.Model.Parts.Weapons
                 Target.TryGetTarget(out var target);
                 
                 // Check for valid target
-                if (target != null)
+                if (target != null && target.State == UnitState.InPlay)
                 {
                     // Roll hit for each shot
                     for (var i = 0; i < Stats.NumberOfShots; i++)
@@ -163,7 +163,25 @@ namespace GameServer.Model.Parts.Weapons
             }
             else
             {
-                // Fire IFO
+                Ifo ifo;
+
+                if (Stats.IfoType == IfoType.ifo_simple)
+                {
+                    Target.TryGetTarget(out var target);
+                    
+                    // Fire IFO
+                    ifo = new Ifo(this, Stats.IfoStats, GameInstance, target);
+                }
+                else
+                {
+                    ifo = new Ifo(this, Stats.IfoStats, GameInstance);
+                }
+
+                // Add to main program
+                GameInstance.SpawnIfo(ifo);
+                
+                // Notify launched
+                GameInstance.NotifyIfoLaunched(Owner, this, ifo);
             }
         }
 

@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Numerics;
 using Data.Model;
 using GameServer.Configuration.Poo;
 using GameServer.Model.Parts.Skills;
@@ -84,19 +85,41 @@ namespace GameServer.Game.GameModes
         /// <returns></returns>
         public override uint GetTeamForNewUser()
         {
-            var numSessions = RoomInstance.Sessions.Count();
+            // var numSessions = RoomInstance.Sessions.Count();
+            //
+            // for (uint i = 0; i <= numSessions + 1; i++)
+            // {
+            //     if (RoomInstance.Users.All(u => u.Team != i))
+            //     {
+            //         $"Got team for new user ${i}".Info();
+            //         return i;
+            //     }
+            // }
+            //
+            // "ERROR! Could not find a team number for new user!".Error();
+            //     
+            // return (uint) numSessions;
+            return 0xffffffff;
+        }
+        
+        /// <summary>
+        /// The next spawn that will be used
+        /// </summary>
+        private int _nextSpawnId;
 
-            for (uint i = 0; i <= numSessions + 1; i++)
-            {
-                if (RoomInstance.Users.All(u => u.Team != i))
-                {
-                    return i;
-                }
-            }
+        public override Vector3 GetSpawnForUnit(Unit unit)
+        {
+            // Get spawn
+            var spawn = SpawnInfo.PlayerSpawns[_nextSpawnId];
+            
+            // Increment
+            _nextSpawnId++;
 
-            "ERROR! Could not find a team number for new user!".Error();
-                
-            return (uint) numSessions;
+            // Loop around if needed
+            if (_nextSpawnId >= SpawnInfo.PlayerSpawns.Count)
+                _nextSpawnId = 0;
+
+            return spawn.WorldPosition;
         }
     }
 }

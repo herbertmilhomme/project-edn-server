@@ -8,6 +8,7 @@ using Cysharp.Threading;
 using Data.Model;
 using Data.Model.Items;
 using GameServer.Configuration;
+using GameServer.Configuration.Game;
 using GameServer.Configuration.Poo;
 using GameServer.GeoEngine;
 using GameServer.Model.Parts.Skills;
@@ -24,6 +25,7 @@ using Console = Colorful.Console;
 //using UnitInfo = GameServer.ServerPackets.Room.UnitInfo;
 //using UserInfo = GameServer.ServerPackets.Room.UserInfo;
 using GameServer.Util;
+using Swan;
 using Swan.Configuration;
 using Swan.Logging;
 using Weapon = GameServer.Model.Parts.Weapons.Weapon;
@@ -73,6 +75,11 @@ namespace GameServer.Game
         public Map Map;
 
         /// <summary>
+        /// The spawn map instance for this game
+        /// </summary>
+        protected MapSpawnInfo SpawnInfo;
+
+        /// <summary>
         /// Creates a new game instance
         /// </summary>
         /// <param name="roomInstance">The room this game is running in</param>
@@ -96,35 +103,10 @@ namespace GameServer.Game
         private readonly ConcurrentDictionary<int, Unit> _units = new ConcurrentDictionary<int, Unit>();
         
         /// <summary>
-        /// Disctioanry of all skills in play
+        /// All current ifos
         /// </summary>
-        private readonly ConcurrentDictionary<int, Skill> _skills = new ConcurrentDictionary<int, Skill>();
+        private readonly ConcurrentDictionary<int, Ifo> _ifos = new ConcurrentDictionary<int, Ifo>();
 
-        /// <summary>
-        /// Gets a skill by its id
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        public Skill GetSkillById(int id)
-        {
-            return _skills[id];
-        }
-
-        /// <summary>
-        /// Adds skills and notifies all users
-        /// </summary>
-        /// <param name="skill"></param>
-        // public void AddSkills(IEnumerable<Skill> skills)
-        // {
-        //     foreach (var skill in skills)
-        //     {
-        //         _skills[skill.Id] = skill;
-        //     }
-        // }
-
-        //TEMP
-        public Vector3 SpawnLocation { get; set; } = new Vector3(0, 0, 1000);
-        
         #endregion
 
         #region CHAT
@@ -136,6 +118,8 @@ namespace GameServer.Game
         /// <param name="message">The message</param>
         public virtual void OnChat(ExteelUser user, string message)
         {
+            $"[CHAT] {user}: {message}".Debug();
+            
             if (BeforeChat(user, message))
                 RoomInstance.MulticastPacket(new Message(user.Callsign, message));
         }
@@ -182,7 +166,7 @@ namespace GameServer.Game
         /// <returns></returns>
         public IEnumerable<Unit> GetEnemies(Unit unit)
         {
-            return _units.Values.Where(u => u.Team != unit.Team);
+            return _units.Values.Where(u => u.Id != unit.Id && u.State == UnitState.InPlay && (u.Team == 0xffffffff || u.Team != unit.Team));
         }
         
         /// <summary>
@@ -192,7 +176,7 @@ namespace GameServer.Game
         /// <returns></returns>
         public IEnumerable<Unit> GetFriends(Unit unit)
         {
-            return _units.Values.Where(u => u.Team == unit.Team);
+            return _units.Values.Where(u => u.State == UnitState.InPlay && u.Team != 0xffffffff && u.Team == unit.Team);
         }
         
         #endregion
@@ -205,20 +189,8 @@ namespace GameServer.Game
         /// <param name="session"></param>
         public void OnGameEnter(GameSession session)
         {
-            // If in progress, list users?
-            if (GameState == GameState.InGame)
-            {
-                // Send all users currently in room
-                foreach (var user in RoomInstance.Users)
-                {
-                    // Send user info
-                    session.SendPacket(new UserInfo(this, user));
-                
-                    // Send unit info
-                    //session.SendPacket(new UnitInfo(user, user.DefaultUnit));
-                }
-            }
-            
+            $"Session entered ${session}".Info();
+
             // Call hook
             AfterGameEnter(session);
         }
@@ -240,6 +212,13 @@ namespace GameServer.Game
             
             // Call hook
             AfterGameLeave(session);
+            
+            // Cleanup if necessary
+            if (session.CurrentUnit != null)
+                DestroyUnit(session.CurrentUnit);
+            
+            // Notify of stats update
+            NotifyScoreChanged();
         }
 
         /// <summary>
@@ -256,18 +235,39 @@ namespace GameServer.Game
         {
             // Set flag to true
             session.IsGameReady = true;
-            
-            // Load user stats here, so they are not loaded during gameplay
-            //session.User.DefaultUnit.CalculateStats();
-            
+
             // Broadcast NEW user info
             RoomInstance.MulticastPacket(new UserInfo(this, session.User));
             
+            // Send all users currently in room
+            foreach (var user in RoomInstance.Users)
+            {
+                // Send user info
+                session.SendPacket(new UserInfo(this, user));
+            }
+            
+            // Send skills
+            var skills = RoomInstance.Users
+                .Select(u => u.DefaultUnit)
+                .SelectMany(u =>
+                {
+                    var sk = new List<PartRecord>();
+                    
+                    if (u.Skill1 != null) sk.Add(u.Skill1);
+                    if (u.Skill2 != null) sk.Add(u.Skill2);
+                    if (u.Skill3 != null) sk.Add(u.Skill3);
+                    if (u.Skill4 != null) sk.Add(u.Skill4);
+                    
+                    return sk;
+                });
+            
+            RoomInstance.MulticastPacket(new CodeList(skills));
+
             // Broadcast NEW unit info
             //MulticastPacket(new UnitInfo(session.User, session.User.DefaultUnit));
             
             // Send GEO Objects? TEST
-            session.SendPacket(new GeoObjectsHp());
+            //session.SendPacket(new GeoObjectsHp());
             
             // Spawn user default unit
             SpawnUnit(session.User.DefaultUnit, session);
@@ -275,35 +275,21 @@ namespace GameServer.Game
             // If game is not started, we do start checks, otherwise, we just tell the new user its started
             if (GameState == GameState.WaitingForPlayers)
                 CheckAllUsersReady();
-            else
+            else if (GameState == GameState.InGame)
             {
-//                foreach (var user in Users.Where(u => u != session.User))
-//                {
-//                    // Send EXISTING user info to NEW user
-//                    //session.SendPacket(new ServerPackets.Game.UserInfo(this, user));
-//                    
-//                    
-//                    
-//                    // Spawn if alive
-////                    if (user.DefaultUnit.Alive)
-////                    {
-////                        // Send EXISTING unit info to NEW user
-////                        session.SendPacket(new ServerPackets.Game.UnitInfo(user, user.DefaultUnit));
-////                        session.SendPacket(new SpawnUnit(user.DefaultUnit));
-////                    }
-//                    // Send user info
-//
-//                    System.Console.WriteLine($"Sending user info {user.Username} to session {session.GetUserName()}");
-//                }
-                // Send all active units to new session
-                foreach (var unit in _units.Values)
-                {
-                    session.SendPacket(new UnitInfo(unit));
-                    session.SendPacket(new SpawnUnit(unit));
-                }
-                
                 session.SendPacket(new GameStarted());
             }
+
+            // Send existing units
+            foreach (var unit in _units.Values)
+            {
+                session.SendPacket(new UnitInfo(unit, session));
+                session.SendPacket(new SpawnUnit(unit));
+                session.SendPacket(new StatusChanged(unit, true, true, true));
+            }
+            
+            // Update score
+            NotifyScoreChanged();
             
             // Call hook
             AfterGameReady(session);
@@ -316,12 +302,67 @@ namespace GameServer.Game
         /// </summary>
         private void CheckAllUsersReady()
         {
+            $"Check all users".Info();
+            
             // If everyone is loaded in
             if (RoomInstance.Sessions.All(s => s.IsGameReady))
             {
                 // Start game
                 OnGameStart();
             }
+        }
+        
+        #endregion
+        
+        #region IFO
+
+        private int _nextIfoId;
+
+        /// <summary>
+        /// Spawns an ifo
+        /// </summary>
+        /// <param name="ifo"></param>
+        public void SpawnIfo(Ifo ifo)
+        {
+            if (_ifos.TryAdd(_nextIfoId, ifo))
+            {
+                ifo.Id = _nextIfoId;
+                _nextIfoId++;
+
+                if (_nextIfoId > 10000) _nextIfoId = 1;
+            }
+        }
+
+        /// <summary>
+        /// Removes an ifo
+        /// </summary>
+        /// <param name="ifo"></param>
+        public void RemoveIfo(Ifo ifo)
+        {
+            _ifos.TryRemove(ifo.Id, out var trash);
+        }
+
+        /// <summary>
+        /// Notifies users of ifo result
+        /// </summary>
+        /// <param name="ifo"></param>
+        /// <param name="hits"></param>
+        public void NotifyIfoResult(Ifo ifo, List<HitResult> hits)
+        {
+            // while (hits.Count < 4)
+            //     hits.Add(HitResult.Unknown);
+            
+            RoomInstance.MulticastPacket(new AttackIfoResult(ifo, hits));
+        }
+        
+        /// <summary>
+        /// Notifies users an ifo was launched
+        /// </summary>
+        /// <param name="ifo"></param>
+        /// <param name="hits"></param>
+        public void NotifyIfoLaunched(Unit unit, Weapon weapon, Ifo ifo)
+        {
+            RoomInstance.MulticastPacket(new AttackIfo(unit, weapon, ifo));
         }
         
         #endregion
@@ -372,6 +413,9 @@ namespace GameServer.Game
             
             // Set team
             spawnedUnit.Team = owner.User.Team;
+            
+            // Set state
+            spawnedUnit.State = UnitState.Spawned;
 
             // Calculate stats
             spawnedUnit.CalculateStats();
@@ -380,23 +424,24 @@ namespace GameServer.Game
             spawnedUnit.CurrentHealth = 9999;
             
             // Set unit Location
-            // TODO: Spawn maps?
-            spawnedUnit.WorldPosition = new Vector3(SpawnLocation.X, SpawnLocation.Y, SpawnLocation.Z);
+            spawnedUnit.WorldPosition = GetSpawnForUnit(spawnedUnit);
 
             // Notify
-            RoomInstance.MulticastPacket(new CodeList(spawnedUnit.Skills));
+            //RoomInstance.MulticastPacket(new CodeList(spawnedUnit.Skills));
             
             // Send unit info
-            RoomInstance.MulticastPacket(new UnitInfo(spawnedUnit));
+            RoomInstance.MulticastPacketWithSession(session => new UnitInfo(spawnedUnit, session));
             
             // Send spawn command
             RoomInstance.MulticastPacket(new SpawnUnit(spawnedUnit));
             
             // Send status?
-            RoomInstance.MulticastPacket(new StatusChanged(spawnedUnit, true, true, true));
+            RoomInstance.MulticastPacket(new StatusChanged(spawnedUnit, true, false, true));
             
             // Call hook
             AfterUnitSpawned(spawnedUnit, owner);
+            
+            $"Unit Spawned ${unit} - ${unit.Id} - ${owner.User.Team}".Info();
         }
 
         /// <summary>
@@ -429,16 +474,18 @@ namespace GameServer.Game
         /// <param name="weapon">The weapon that killed him</param>
         public void KillUnit(Unit unit, Unit killer = null, Weapon weapon = null, Skill skill = null)
         {
-            // Call ondeath
-            unit.OnDeath();
+            // Update scores
+            if (killer != null && killer != unit)
+            {
+                killer.Owner.User.Scores.Kills++;
+                killer.Owner.User.Scores.Points += 30;
+                killer.Owner.User.Scores.Credits += 100;
+            }
 
-            // Destroy?
+            // Do not add score updates to npcs
             if (unit.Owner != null)
-                unit.Owner.CurrentUnit = null;
+                unit.Owner.User.Scores.Deaths++;
             
-            // Remove from units list
-            _units.Remove(unit.Id, out var trash);
-
             // TODO: Use an interface here?
             if (weapon != null)
             {
@@ -457,6 +504,47 @@ namespace GameServer.Game
                 AfterUnitKilled(unit, killer, skill);
             }
             
+            // Notify of stats update
+            NotifyScoreChanged();
+            
+            // Notify unit of regain
+            unit.Owner?.SendPacket(new RegainInfo(unit.Owner, false));
+
+            // Flag for death
+            unit.State = UnitState.Dying;
+        }
+
+        /// <summary>
+        /// Destroys a unit and removes all references to it
+        /// </summary>
+        /// <param name="unit"></param>
+        protected void DestroyUnit(Unit unit)
+        {
+            // Unaim from all guns
+            var allWeapons = _units.Values.SelectMany(u => new[]
+            {
+                u.WeaponSetPrimary.Left, u.WeaponSetPrimary.Right,
+                u.WeaponSetSecondary.Left, u.WeaponSetSecondary.Right
+            });
+            
+            // Unaim
+            foreach (var w in allWeapons)
+            {
+                if (w is Gun gun && gun.Target.TryGetTarget(out var target) && target == unit)
+                {
+                    gun.UnAimUnit();
+                }
+            }
+            
+            // Call ondeath
+            unit.OnDeath();
+            
+            // Destroy?
+            if (unit.Owner != null)
+                unit.Owner.CurrentUnit = null;
+            
+            // Remove from units list
+            _units.Remove(unit.Id, out var trash);
         }
 
         /// <summary>
@@ -671,6 +759,9 @@ namespace GameServer.Game
             // Set hp to max - auto clamps to max hp
             spawnedUnit.CurrentHealth = 9999;
             
+            // Set state
+            spawnedUnit.State = UnitState.Spawned;
+            
             // Set unit Location
             // TODO: Spawn maps?
             spawnedUnit.WorldPosition = new Vector3(pos.X, pos.Y, pos.Z);
@@ -680,8 +771,23 @@ namespace GameServer.Game
             
             // Send spawn command
             RoomInstance.MulticastPacket(new SpawnUnit(spawnedUnit));
+            
+            // Send status?
+            RoomInstance.MulticastPacket(new StatusChanged(spawnedUnit, true, false, true));
 
             return spawnedUnit;
+        }
+        
+        #endregion
+        
+        #region SCORES
+
+        /// <summary>
+        /// Notifies all players when the scores have changed
+        /// </summary>
+        public void NotifyScoreChanged()
+        {
+            RoomInstance.MulticastPacket(new ScoreUpdate(this));
         }
         
         #endregion
@@ -703,6 +809,11 @@ namespace GameServer.Game
             
             // Start game loop
             StartGameLoop();
+            
+            $"GAME LOADED!".Info();
+            
+            // Set to waiting for players
+            GameState = GameState.WaitingForPlayers;
         }
 
         /// <summary>
@@ -714,10 +825,9 @@ namespace GameServer.Game
             BeforeGameStart();
             
             // Set game started flag
-            GameState = GameState.InGame;
-                
-            // Send game start
-            RoomInstance.MulticastPacket(new GameStarted());
+            GameState = GameState.AllPlayersReady;
+
+            $"ALL READY!".Info();
         }
 
         /// <summary>
@@ -736,6 +846,8 @@ namespace GameServer.Game
         public void OnGameDestroy()
         {
             GameState = GameState.Destroyed;
+            
+            $"GAME DESTROYED!".Info();
         }
         
         #endregion
@@ -750,6 +862,8 @@ namespace GameServer.Game
             await looper.RegisterActionAsync(GameLoop);
         }
 
+        private LogicLooperCoroutine coroutine = default(LogicLooperCoroutine);
+        
         /// <summary>
         /// The main game loop. When overriding, make sure to call base function. Return false to stop game loop
         /// </summary>
@@ -761,6 +875,29 @@ namespace GameServer.Game
             
             // If game is waiting on players, continue
             if (GameState == GameState.WaitingForPlayers) return true;
+
+            if (GameState == GameState.AllPlayersReady)
+            {
+                GameState = GameState.WaitingToStart;
+                coroutine = ctx.RunCoroutine(async coCtx =>
+                {
+                    await coCtx.Delay(TimeSpan.FromSeconds(2));
+                    
+                    // Mark started
+                    GameState = GameState.InGame;
+                    
+                    // Send game start
+                    RoomInstance.MulticastPacket(new GameStarted());
+                    
+                    // Release all units
+                    foreach (var unit in _units.Values)
+                    {
+                        RoomInstance.MulticastPacket(new StatusChanged(unit, true, true, true));
+                    }
+
+                    "GAME START".Info();
+                });
+            }
             
             // Movement
 //            if (ctx.CurrentFrame % UpdateFrameInterval == 0)
@@ -779,7 +916,59 @@ namespace GameServer.Game
             // Tick
             foreach (var unit in _units.Values)
             {
-                unit.OnTick(ctx.ElapsedTimeFromPreviousFrame.TotalMilliseconds);
+                // If they just spawned
+                if (unit.State == UnitState.Spawned)
+                {
+                    // Set to invincible
+                    unit.State = UnitState.Invincible;
+                    
+                    ctx.RunCoroutine(async coCtx =>
+                    {
+                        // TODO: Configurable / overridable respawn time
+                        await coCtx.Delay(TimeSpan.FromSeconds(5));
+                    
+                        // Set to invincible
+                        unit.State = UnitState.InPlay;
+                        
+                        // Notify users
+                        RoomInstance.MulticastPacket(new StatusChanged(unit, true, true, true));
+                    });
+                } else if (unit.State == UnitState.Dying)
+                {
+                    // Update state
+                    unit.State = UnitState.Dead;
+                    
+                    ctx.RunCoroutine(async coCtx =>
+                    {
+                        await coCtx.Delay(TimeSpan.FromSeconds(4));
+                    
+                        // Set to invincible
+                        unit.State = UnitState.Destroyed;
+                        
+                        // Cleanup
+                        DestroyUnit(unit);
+                        
+                        // Inform the player they can spawn
+                        unit.Owner?.SendPacket(new UnitRepaired(unit.Id));
+                    });
+                }
+                else if (unit.State == UnitState.InPlay)
+                {
+                    unit.OnTick(ctx.ElapsedTimeFromPreviousFrame.TotalMilliseconds);
+                }
+            }
+            
+            foreach (var (_, value) in _ifos)
+            {
+                try
+                {
+                    value.OnTick(ctx.ElapsedTimeFromPreviousFrame.TotalMilliseconds);
+                }
+                catch (Exception e)
+                {
+                    $"IFO Caused an error! {e.Message}!".Warn();
+                    RemoveIfo(value);
+                }
             }
 
             return true;
@@ -796,6 +985,7 @@ namespace GameServer.Game
         private void LoadMap()
         {
             Map = GeoEngine.GeoEngine.GetGeoMap(GameStats.MapFileName);
+            SpawnInfo = SpawnDataReader.GetSpawnInfoForMap(GameStats.MapFileName);
         }
 
         #endregion
@@ -810,27 +1000,14 @@ namespace GameServer.Game
         /// </summary>
         /// <returns></returns>
         public abstract uint GetTeamForNewUser();
-        /*{
-            if (GameType == GameType.Survival)
-            {
-                
-            }
 
-            if (GameType == GameType.DefensiveBattle)
-            {
-                return 0;
-            }
-
-            // Figure out which team has more users and add them to the other team
-            var numUsersTeamZero = _sessions.Values.Select(s => s.User.Team).Count(t => t == 0);
-            var numUsersTeamOne = _sessions.Values.Select(s => s.User.Team).Count(t => t == 1);
-
-            // If more users on team zero, they go to team one
-            // Otherwise, team zero
-            return numUsersTeamZero > numUsersTeamOne ? 1 : (uint) 0;
-        }*/
-
-        
+        /// <summary>
+        /// Gets the spawn for a new user
+        /// TODO: Handle team modes, spawn at base, etc
+        /// </summary>
+        /// <param name="unit"></param>
+        /// <returns></returns>
+        public abstract Vector3 GetSpawnForUnit(Unit unit);
         
         #endregion
     }
@@ -850,9 +1027,11 @@ namespace GameServer.Game
     {
         WaitingRoom = 0,
         WaitingForPlayers = 1,
-        InGame = 2,
-        GameOver = 3,
-        Destroyed = 4,
+        AllPlayersReady = 2,
+        WaitingToStart = 3,
+        InGame = 4,
+        GameOver = 5,
+        Destroyed = 6,
     }
 
     /// <summary>

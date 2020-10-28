@@ -4,6 +4,8 @@ using Data.Model;
 using GameServer.Game;
 using GameServer.Model.Results;
 using GameServer.ServerPackets.Chat;
+using GameServer.ServerPackets.Game;
+using Swan.Logging;
 
 namespace GameServer.Managers
 {
@@ -32,9 +34,15 @@ namespace GameServer.Managers
                     case "#killme":
                         client.GameInstance.KillUnit(client.CurrentUnit);
                         break;
-                    
+
                     case "#where":
                         var unitPos = client.CurrentUnit.WorldPosition;
+                        
+                        // Log it
+                        $"ID,{unitPos.X},{unitPos.Y},{unitPos.Z}".Info();
+                        
+                        client.SendPacket(new Message(client.User.Callsign, 
+                            $"X: {unitPos.X}, Y: {unitPos.Y} Z: {unitPos.Z}"));
                         
                         client.SendPacket(new Message(client.User.Callsign, 
                             $"geoX: {client.GameInstance.Map.GetGeoX((int)unitPos.X)}, geoY: {client.GameInstance.Map.GetGeoY((int)unitPos.Y)}"));

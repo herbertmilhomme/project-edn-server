@@ -43,6 +43,9 @@ namespace GameServer.Model.Units
 
         // TODO: Move into game objects
         private readonly Skill[] _skills;
+        
+        // State
+        public UnitState State = UnitState.Unknown;
 
         public IEnumerable<Skill> Skills
         {
@@ -57,7 +60,7 @@ namespace GameServer.Model.Units
             GameInstance = instance;
             
             Id = unitRecord.Id;
-            Team = unitRecord.User?.Team ?? 0;
+            //Team = unitRecord.User?.Team ?? 0;
             Name = unitRecord.Name;
 
             Head = new Part(unitRecord.Head, this);
@@ -247,7 +250,7 @@ namespace GameServer.Model.Units
         /// <param name="weapon">Weapon used to apply damage</param>
         public void Attack(Weapon weapon, int damage)
         {
-            if (GodMode) return;
+            if (GodMode || State != UnitState.InPlay) return;
             
             _currentHealth -= damage;
             
@@ -265,7 +268,7 @@ namespace GameServer.Model.Units
         /// <param name="damage"></param>
         public void Attack(Skill skill, int damage)
         {
-            if (GodMode) return;
+            if (GodMode || State != UnitState.InPlay) return;
             
             _currentHealth -= damage;
             
@@ -346,6 +349,9 @@ namespace GameServer.Model.Units
         public void TrySwitchWeapons(WeaponSetIndex desiredWeaponSet)
         {
             // TODO: Check for problems, like low EN, dead, etc
+            
+            WeaponSetCurrent.Left.UnAimUnit();
+            WeaponSetCurrent.Right.UnAimUnit();
             
             // Set weapon set
             WeaponSet = desiredWeaponSet;
@@ -496,19 +502,12 @@ namespace GameServer.Model.Units
             WeaponSetSecondary.Left.OnDeath();
             WeaponSetSecondary.Right.OnDeath();
 
-            // Remove references
-            WeaponSetPrimary = (null, null);
-            WeaponSetSecondary = (null, null);
-            
             // Remove skills
             for (var i = 0; i < 4; i++)
             {
                 var skill = _skills[i];
 
                 skill?.OnDeath();
-
-                // Remove ref
-                _skills[i] = null;
             }
         }
 
@@ -551,5 +550,19 @@ namespace GameServer.Model.Units
     {
         Primary = 0,
         Secondary = 1
+    }
+
+    /// <summary>
+    /// The state of this unit
+    /// </summary>
+    public enum UnitState
+    {
+        Unknown,
+        Spawned,
+        Invincible,
+        InPlay,
+        Dying,
+        Dead,
+        Destroyed
     }
 }
