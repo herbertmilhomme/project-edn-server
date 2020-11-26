@@ -28,9 +28,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="Configuration\**" />
-      <EmbeddedResource Remove="Configuration\**" />
-      <None Remove="Configuration\**" />
+      <Compile Remove="Game\Database\**" />
+      <EmbeddedResource Remove="Game\Database\**" />
+      <None Remove="Game\Database\**" />
     </ItemGroup>
 
     <ItemGroup>

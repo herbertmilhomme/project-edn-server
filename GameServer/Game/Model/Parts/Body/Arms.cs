@@ -9,7 +9,7 @@ namespace GameServer.Model.Parts.Body
         /// <summary>
         /// Stats for this part
         /// </summary>
-        private new ArmStats Stats => base.Stats as ArmStats;
+        private new ArmStats Stats { get { return base.Stats as ArmStats; } }
 
         /// <summary>
         /// The maximum overheat these arms can sustain

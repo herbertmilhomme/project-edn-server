@@ -8,56 +8,56 @@ using GameServer.Model.Units;
 
 namespace GameServer.Model.Parts
 {
-    /// <summary>
-    /// Represents a generic part used in gameplay
-    /// </summary>
-    public abstract class PartBase
-    {
-        /// <summary>
-        /// The unit that owns this part
-        /// </summary>
-        public readonly Unit Owner;
+	/// <summary>
+	/// Represents a generic part used in gameplay
+	/// </summary>
+	public abstract class PartBase
+	{
+		/// <summary>
+		/// The id of this part
+		/// </summary>
+		public virtual int Id { get; private set; }
 
-        /// <summary>
-        /// The game instance this part is in
-        /// </summary>
-        protected GameInstance GameInstance => Owner.GameInstance;
-        
-        /// <summary>
-        /// The stats for this part
-        /// </summary>
-        protected readonly StatsBase Stats;
+		/// <summary>
+		/// The unit that owns this part
+		/// </summary>
+		public virtual Unit Owner { get; private set; }
 
-        /// <summary>
-        /// The color of this part
-        /// </summary>
-        public Color Color { get; protected set; }
+		/// <summary>
+		/// The game instance this part is in
+		/// </summary>
+		protected virtual GameInstance GameInstance { get { return Owner.GameInstance; } }
+		
+		/// <summary>
+		/// The stats for this part
+		/// </summary>
+		public virtual StatsBase Stats { get; protected set; }
 
-        /// <summary>
-        /// The id of this part
-        /// </summary>
-        public readonly int Id;
+		/// <summary>
+		/// The color of this part
+		/// </summary>
+		public virtual Color Color { get; protected set; }
 
-        public uint TemplateId => Stats.TemplateId;
-        
-        protected PartBase(PartRecord partRecord, Unit owner)
-        {
-            // For null weapon
-            if (partRecord == null) return;
-            
-            // Load stats for part
-            Stats = PooReader.GetStatsForPart(partRecord);
-            
-            // Set color
-            Color = partRecord.Color;
-            
-            // Set owner
-            Owner = owner;
-            
-            // Set the Id
-            Id = partRecord.Id;
+		public virtual uint TemplateId { get { return Stats.TemplateId; } }
+		
+		protected PartBase(PartRecord partRecord, Unit owner)
+		{
+			// For null weapon
+			if (partRecord == null) return;
+			
+			// Set the Id
+			Id = partRecord.Id;
 
-            // TODO: Any other info we need
-        }
-    }
+			// Load stats for part
+			Stats = PooReader.GetStatsForPart(partRecord);
+			
+			// Set color
+			Color = partRecord.Color;
+			
+			// Set owner
+			Owner = owner;
+			
+			// TODO: Any other info we need
+		}
+	}
 }
