@@ -19,13 +19,19 @@
       <ProjectReference Include="..\Data\Data.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
+    <!--<ItemGroup>
         <None Include="..\Config\**\*" Link="Config\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="Always" />
-    </ItemGroup>
+    </ItemGroup>-->
 
     <PropertyGroup>
         <RunWorkingDirectory>..\</RunWorkingDirectory>
     </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Remove="Configuration\**" />
+      <EmbeddedResource Remove="Configuration\**" />
+      <None Remove="Configuration\**" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Colorful.Console" Version="1.2.10" />
