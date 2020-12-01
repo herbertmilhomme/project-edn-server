@@ -7,18 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Pages\Api\**" />
-    <Content Remove="Pages\Api\**" />
-    <EmbeddedResource Remove="Pages\Api\**" />
-    <None Remove="Pages\Api\**" />
+    <Compile Remove="Data\**" />
+    <Content Remove="Data\**" />
+    <EmbeddedResource Remove="Data\**" />
+    <None Remove="Data\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Pages\Test.cshtml.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="Pages\Test.cshtml" />
     <Content Remove="wwwroot\css\main.css" />
     <Content Remove="wwwroot\images\bg-heading-02.jpg" />
     <Content Remove="wwwroot\index.html" />
@@ -49,6 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Pages\Api\index.cshtml" />
     <None Include="wwwroot\css\main.css" />
     <None Include="wwwroot\images\bg-heading-02.jpg" />
     <None Include="wwwroot\index.html" />
