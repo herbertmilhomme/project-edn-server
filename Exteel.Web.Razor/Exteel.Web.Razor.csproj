@@ -1,0 +1,90 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UserSecretsId>aspnet-Exteel.Web.Razor-96058EEA-D3ED-469B-A276-0E87FE8CD87F</UserSecretsId>
+    <CopyRefAssembliesToPublishDirectory>false</CopyRefAssembliesToPublishDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Pages\Api\**" />
+    <Content Remove="Pages\Api\**" />
+    <EmbeddedResource Remove="Pages\Api\**" />
+    <None Remove="Pages\Api\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Pages\Test.cshtml.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Pages\Test.cshtml" />
+    <Content Remove="wwwroot\css\main.css" />
+    <Content Remove="wwwroot\images\bg-heading-02.jpg" />
+    <Content Remove="wwwroot\index.html" />
+    <Content Remove="wwwroot\js\global.js" />
+    <Content Remove="wwwroot\vendor\datepicker\daterangepicker.css" />
+    <Content Remove="wwwroot\vendor\datepicker\daterangepicker.js" />
+    <Content Remove="wwwroot\vendor\datepicker\moment.min.js" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\css\font-awesome.css" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\css\font-awesome.min.css" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.eot" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.svg" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.ttf" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.woff" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.woff2" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\fonts\FontAwesome.otf" />
+    <Content Remove="wwwroot\vendor\font-awesome-4.7\HELP-US-OUT.txt" />
+    <Content Remove="wwwroot\vendor\jquery\jquery.js" />
+    <Content Remove="wwwroot\vendor\jquery\jquery.min.js" />
+    <Content Remove="wwwroot\vendor\mdi-font\css\material-design-iconic-font.css" />
+    <Content Remove="wwwroot\vendor\mdi-font\css\material-design-iconic-font.min.css" />
+    <Content Remove="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.eot" />
+    <Content Remove="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.svg" />
+    <Content Remove="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.ttf" />
+    <Content Remove="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.woff" />
+    <Content Remove="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.woff2" />
+    <Content Remove="wwwroot\vendor\select2\select2.min.css" />
+    <Content Remove="wwwroot\vendor\select2\select2.min.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\css\main.css" />
+    <None Include="wwwroot\images\bg-heading-02.jpg" />
+    <None Include="wwwroot\index.html" />
+    <None Include="wwwroot\js\global.js" />
+    <None Include="wwwroot\vendor\datepicker\daterangepicker.css" />
+    <None Include="wwwroot\vendor\datepicker\daterangepicker.js" />
+    <None Include="wwwroot\vendor\datepicker\moment.min.js" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\css\font-awesome.css" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\css\font-awesome.min.css" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.eot" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.svg" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.ttf" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.woff" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\fontawesome-webfont.woff2" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\fonts\FontAwesome.otf" />
+    <None Include="wwwroot\vendor\font-awesome-4.7\HELP-US-OUT.txt" />
+    <None Include="wwwroot\vendor\jquery\jquery.js" />
+    <None Include="wwwroot\vendor\jquery\jquery.min.js" />
+    <None Include="wwwroot\vendor\mdi-font\css\material-design-iconic-font.css" />
+    <None Include="wwwroot\vendor\mdi-font\css\material-design-iconic-font.min.css" />
+    <None Include="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.eot" />
+    <None Include="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.svg" />
+    <None Include="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.ttf" />
+    <None Include="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.woff" />
+    <None Include="wwwroot\vendor\mdi-font\fonts\Material-Design-Iconic-Font.woff2" />
+    <None Include="wwwroot\vendor\select2\select2.min.css" />
+    <None Include="wwwroot\vendor\select2\select2.min.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="3.1.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="3.1.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="3.1.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="3.1.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="3.1.4" />
+  </ItemGroup>
+
+</Project>
