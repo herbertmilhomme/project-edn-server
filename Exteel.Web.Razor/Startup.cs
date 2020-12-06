@@ -30,7 +30,15 @@ namespace Exteel.Web.Razor
 			//services.AddDbContext<ApplicationDbContext>(options =>
 			//	options.UseSqlServer(
 			//		Configuration.GetConnectionString("DefaultConnection")));
-			//services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+			services.AddDefaultIdentity<IdentityUser>(options => {
+				options.SignIn.RequireConfirmedAccount = false; // prevents botting by confirming user with email
+				options.User.RequireUniqueEmail = true; // one account per email
+				options.Lockout.AllowedForNewUsers = false;
+				options.Password.RequireDigit = false;
+				options.Password.RequireLowercase = false;
+				options.Password.RequireNonAlphanumeric = false;
+				options.Password.RequireUppercase = false;
+			});
 			//	.AddEntityFrameworkStores<ApplicationDbContext>();
 			services.AddRazorPages();
 		}
