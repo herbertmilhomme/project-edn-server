@@ -14,7 +14,7 @@
     <RootNamespace>Exteel.Database.MSSQL</RootNamespace>
     <AssemblyName>Exteel.Database.MSSQL</AssemblyName>
     <ModelCollation>1033, CI</ModelCollation>
-    <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
+    <DefaultFileStructure>BySchemaType</DefaultFileStructure>
     <DeployToDatabase>True</DeployToDatabase>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetLanguage>CS</TargetLanguage>
@@ -56,5 +56,16 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
     <Folder Include="Properties" />
+    <Folder Include="Game" />
+    <Folder Include="Game\Account" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="Game\AbilityGrowth.sql" />
+    <Build Include="Game\AbilityGrowthTypes.sql" />
+    <Build Include="Game\PartData.sql" />
+    <Build Include="Game\ItemSlotTypes.sql" />
+    <Build Include="Game\Player.sql" />
+    <Build Include="Game\Account\Account.sql" />
+    <Build Include="Game\Account\UserAccountStatus.sql" />
   </ItemGroup>
 </Project>
